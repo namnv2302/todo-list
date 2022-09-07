@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import BillingFilledIcon from '@atlaskit/icon/glyph/billing-filled';
+import { v4 } from 'uuid';
 import TodoItem from './TodoItem';
 import classNames from 'classnames/bind';
 import styles from './TodoList.module.scss';
@@ -7,6 +8,7 @@ import styles from './TodoList.module.scss';
 const cx = classNames.bind(styles);
 
 function TodoList() {
+    const [isUpdate, setIsUpdate] = useState(null);
 
     const [task, setTask] = useState(() => {
 
@@ -16,29 +18,61 @@ function TodoList() {
     });
     const [inputValue, setInputValue] = useState('');
 
+    useEffect(() => {
+        if(isUpdate) {
+            setInputValue(isUpdate.title)
+        } else {
+            setInputValue('');
+        }
+    }, [setInputValue, isUpdate])
+
     const handleSubmit = () => {
-        setTask(prev => {
-            if(inputValue.trim() != "") {
-                const newTask = [inputValue, ...prev];
+        if(!isUpdate) {
+            setTask(prev => {
+                if(inputValue.trim() != "") {
+                    const newTask = [
+                        {
+                            id: v4(),
+                            title: inputValue,
+                        },
+                        ...prev
+                    ];
+    
+                    localStorage.setItem('task', JSON.stringify(newTask));
+    
+                    return newTask;
+                } else {
+                    return prev;
+                }
+            }); 
+            setInputValue('');
+        } else {
+            setTask(prev => {
+                const newTask = prev.map(item => item.id == isUpdate.id ? {id: isUpdate.id, title: inputValue} : item);
 
                 localStorage.setItem('task', JSON.stringify(newTask));
 
+                setIsUpdate('');
+                setInputValue('');
+
                 return newTask;
-            } else {
-                return prev;
-            }
-        }); 
-        setInputValue('');
+            })
+        }
     }
 
     const handleDelete = (id) => {
         setTask(prev => {
-            const newTask = prev.filter((item, index) => index != id);
+            const newTask = prev.filter((item) => item.id != id);
 
             localStorage.setItem('task', JSON.stringify(newTask));
 
             return newTask;
         });
+    }
+
+    const handleUpdate = (id) => {
+        const itemUpdate = task.find(item => item.id == id);
+        setIsUpdate(itemUpdate);
     }
    
     return (
@@ -59,12 +93,12 @@ function TodoList() {
                     className={cx('button')}
                     onClick={handleSubmit}
                 >
-                    Add new task
+                    {isUpdate ? 'Change' : 'Add new task'}
                 </div>
             </div>
             <div className={cx('wrapper')}>
-                {task.map((item, index) => (
-                    <TodoItem key={index} id={index} value={item} onClick={handleDelete} />
+                {task.map((data, index) => (
+                    <TodoItem key={index} data={data} onUpdate={handleUpdate} onDelete={handleDelete} />
                 ))}
             </div>
         </div>
