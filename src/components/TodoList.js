@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import BillingFilledIcon from '@atlaskit/icon/glyph/billing-filled';
+import MediaServicesFilterIcon from '@atlaskit/icon/glyph/media-services/filter'
+import SearchIcon from '@atlaskit/icon/glyph/search'
 import { v4 } from 'uuid';
 import TodoItem from './TodoItem';
 import classNames from 'classnames/bind';
@@ -67,7 +69,10 @@ function TodoList() {
             setInputValue('');
         } else {
             setTask(prev => {
-                const newTask = prev.map(item => item.id === isUpdate.id ? {id: isUpdate.id, title: inputValue, date: timer()} : item);
+                if(isUpdate.isComplete === true) {
+                    isUpdate.isComplete = false
+                }
+                const newTask = prev.map(item => item.id === isUpdate.id ? {id: isUpdate.id, title: inputValue, date: timer(), isComplete: isUpdate.isComplete} : item);
 
                 localStorage.setItem('task', JSON.stringify(newTask));
 
@@ -105,9 +110,17 @@ function TodoList() {
         })
 
     }
-   
-    return (
+
+    const handleSort = () => {
+        const newTask = [];
+        task.map(item => newTask.unshift(item));
         
+        localStorage.setItem('task', JSON.stringify(newTask));
+        
+        setTask(newTask);
+    }
+   
+    return (     
         <div className={cx('todo-list')}>
             <div className={cx('todo-list-form')}>
                 <div className={cx('input')}>
@@ -130,6 +143,14 @@ function TodoList() {
                 </div>
             </div>
             <div className={cx('wrapper')}>
+                {task.length > 0 && <div className={cx('methods')}>
+                    <div className={cx('sort')} onClick={handleSort}>
+                        <MediaServicesFilterIcon primaryColor='#16a3b7' />
+                    </div>
+                    <div className={cx('search')}>
+                        <SearchIcon primaryColor='#16a3b7' />
+                    </div>
+                </div>}
                 {task.map((data, index) => (
                     <TodoItem key={index} data={data} onComplete={handleComplete} onUpdate={handleUpdate} onDelete={handleDelete} />
                 ))}

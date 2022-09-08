@@ -14,11 +14,11 @@ function TodoItem({ data, onComplete, onUpdate, onDelete }) {
         <div className={cx('todo-item')}>
             <p className={cx('text')}>
                 <p className={data.isComplete ? cx('title', 'complete') : cx('title')}>{data.title}</p>
-                <span>{data.date}</span>
+                <p className={cx('date')}>{data.date}</p>
             </p>
             <div className={cx('options')}>
                 <span className={cx('icon-checkbox')}>
-                    <input onChange={() => onComplete(data.id)} type="checkbox"/>
+                    <input checked={data.isComplete} onChange={() => onComplete(data.id)} type="checkbox"/>
                 </span>
                 <span className={cx('icon-change')} onClick={() => onUpdate(data.id)}>
                     <EditFilledIcon primaryColor='#fec104' />

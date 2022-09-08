@@ -51,7 +51,20 @@
 }
 
 .wrapper {
-    margin-top: 30px;
+    margin-top: 20px;
+
+    .methods {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        padding: 0 20px;
+
+        .sort,
+        .search {
+            cursor: pointer;
+        }
+    }
 }
 
 .todo-item {
@@ -67,9 +80,10 @@
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.06);
 
     .text {
-        span {
+        .date {
             font-size: 1.2rem;
             color: #ccc;
+            margin-top: 4px;
         }
         .title {
             font-weight: 600;
