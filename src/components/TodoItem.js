@@ -1,19 +1,24 @@
+import { useRef, useState } from 'react';
 import TrashIcon from '@atlaskit/icon/glyph/trash';
 import EditFilledIcon from '@atlaskit/icon/glyph/edit-filled'
-import CheckIcon from '@atlaskit/icon/glyph/check'
+// import CheckIcon from '@atlaskit/icon/glyph/check'
 import classNames from 'classnames/bind';
 import styles from './TodoList.module.scss';
 
 
 const cx = classNames.bind(styles);
 
-function TodoItem({ data, onUpdate, onDelete }) {
+function TodoItem({ data, onComplete, onUpdate, onDelete }) {
+    
     return ( 
         <div className={cx('todo-item')}>
-            <p className={cx('title')}>{data.title}</p>
+            <p className={cx('text')}>
+                <p className={data.isComplete ? cx('title', 'complete') : cx('title')}>{data.title}</p>
+                <span>{data.date}</span>
+            </p>
             <div className={cx('options')}>
-                <span className={cx('icon-check')}>
-                    <CheckIcon primaryColor='red' />
+                <span className={cx('icon-checkbox')}>
+                    <input onChange={() => onComplete(data.id)} type="checkbox"/>
                 </span>
                 <span className={cx('icon-change')} onClick={() => onUpdate(data.id)}>
                     <EditFilledIcon primaryColor='#fec104' />
