@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore"; 
 import BillingFilledIcon from '@atlaskit/icon/glyph/billing-filled';
 import { v4 } from 'uuid';
 import {
@@ -7,6 +8,7 @@ import {
     DropdownMenu,
     DropdownItem,
   } from 'reactstrap';
+import { db } from '../storage/firebase.js'
 import TodoItem from './TodoItem';
 import classNames from 'classnames/bind';
 import styles from './TodoList.module.scss';
@@ -20,17 +22,11 @@ function TodoList({ direction, ...args }) {
     const [level, setLevel] = useState('hight');
     const [searchValue, setSearchValue] = useState('');
     const [dropdownOpen, setDropdownOpen] = useState(false);
-    const [sort, setSort] = useState()
 
     // Lấy dữ liệu từ localStorage -> set cho mảng Task
-    const [tasks, setTask] = useState(() => {
+    const [tasks, setTasks] = useState([]);
 
-        const value = JSON.parse(localStorage.getItem('tasks'));
-
-        return value || [];
-    });
     const [inputValue, setInputValue] = useState('');
-
     const inputRef = useRef();
     const searchRef = useRef();
 
@@ -44,6 +40,16 @@ function TodoList({ direction, ...args }) {
             setInputValue('');
         }
     }, [updateItem])
+
+    // Lấy dữ liệu từ firebase store
+    useEffect(() => {
+        getDocs(collection(db, "todo-items"))
+        .then((querySnapshot) => {
+            const items = [];
+            querySnapshot.forEach((doc) => items.push(doc.data()));
+            setTasks(items)
+        })
+    }, [])
 
     const AddZero = (num) => {
         return (num >= 0 && num < 10) ? "0" + num : num + "";
@@ -67,33 +73,36 @@ function TodoList({ direction, ...args }) {
     // Xử lý khi click nút tạo task 
     const handleSubmit = () => {
         if(!updateItem) {
-            setTask(prev => {
-                if(inputValue.trim() !== "") {
-                    const newTask = [
-                        ...prev,
-                        {
-                            id: v4(),
-                            title: inputValue,
-                            date: timer(),
-                            isComplete: isComplete,
-                            level: level,
-                        }
-                    ];
-    
-                    localStorage.setItem('tasks', JSON.stringify(newTask));
-    
-                    return newTask;
-                } else {
-                    return prev;
+            if(inputValue.trim() !== "") {
+                const item = {
+                    id: v4(),
+                    title: inputValue,
+                    date: timer(),
+                    isComplete: isComplete,
+                    level: level,
                 }
-            }); 
-            inputRef.current.focus();
+                
+                setTasks(prev => [...prev, item])
+
+                setDoc(doc(db, "todo-items", `${item.id}`), item);
+            }
             setInputValue('');
+            inputRef.current.focus();
         } else {
-            setTask(prev => {
+            setTasks(prev => {
                 if(updateItem.isComplete === true) {
                     updateItem.isComplete = false
                 }
+
+                const item = doc(db, "todo-items", `${updateItem.id}`);
+                updateDoc(item, {
+                    id: updateItem.id, 
+                    title: inputValue, 
+                    date: timer(), 
+                    isComplete: updateItem.isComplete,
+                    level: level
+                });
+
                 const newTask = prev.map(item => item.id === updateItem.id 
                     ? 
                     {id: updateItem.id, 
@@ -105,8 +114,6 @@ function TodoList({ direction, ...args }) {
                     :
                     item);
 
-                localStorage.setItem('tasks', JSON.stringify(newTask));
-
                 setUpdateItem('');
                 setInputValue('');
     
@@ -117,10 +124,9 @@ function TodoList({ direction, ...args }) {
 
     // Xử lý khi xóa task 
     const handleDelete = (id) => {
-        setTask(prev => {
+        deleteDoc(doc(db, "todo-items", `${id}`));
+        setTasks(prev => {
             const newTask = prev.filter((item) => item.id !== id);
-
-            localStorage.setItem('tasks', JSON.stringify(newTask));
 
             return newTask;
         });
@@ -134,37 +140,43 @@ function TodoList({ direction, ...args }) {
 
     // Xử lý khi click checkbox hoàn thành task 
     const handleComplete = (id) => {
-
-        setTask(prev => {
+        setTasks(prev => {
             const newTask = prev.map(item => item.id === id ? {...item, isComplete: !item.isComplete} : item);
+            const itemFind = prev.find(item => item.id === id);
 
-            localStorage.setItem('tasks', JSON.stringify(newTask));
+            const item = doc(db, "todo-items", `${id}`);
+            updateDoc(item, {
+                isComplete: !itemFind.isComplete
+            });
 
             return newTask;
         })
-
     }
 
     // Xử lý khi search
     const handleSearch = () => {
         if(searchValue.trim() !== '') {
-            setTask(prev => {
-                setSearchValue('')
-                searchRef.current.focus();
-                const searchTask = prev.filter(item => item.title.includes(searchValue))
+            const searchTask = tasks.filter(item => item.title.includes(searchValue))
+            searchRef.current.focus();
+            setSearchValue('');
 
-                if(searchTask.length > 0) {
-                    return searchTask;
-                } else {
-                    return JSON.parse(localStorage.getItem('tasks')) || [];
-                }
-
-                // localStorage.setItem('searchResult', JSON.stringify(searchTask));
-            })
+            if(searchTask.length > 0) {
+                setTasks(searchTask)
+            } else {
+                getDocs(collection(db, "todo-items"))
+                .then((querySnapshot) => {
+                    const items = [];
+                    querySnapshot.forEach((doc) => items.push(doc.data()));
+                    setTasks(items)
+                })
+            }
+            
         } else {
-            setTask(() => {
-                const value = JSON.parse(localStorage.getItem('tasks'));
-                return value || [];
+            getDocs(collection(db, "todo-items"))
+            .then((querySnapshot) => {
+                const items = [];
+                querySnapshot.forEach((doc) => items.push(doc.data()));
+                setTasks(items)
             })
         }
     }
@@ -183,20 +195,35 @@ function TodoList({ direction, ...args }) {
         let newTask;
         if(id === 1) {
             newTask = []
-            var arraySec = tasks.map(item => item.date[1])
-            arraySec.sort(function(a, b){return b - a})
-            arraySec.forEach(arrayItem => (
+            var arraySecDown = tasks.map(item => item.date[1])
+            arraySecDown.sort(function(a, b){return b - a})
+            arraySecDown.forEach(arrayItem => (
                 newTask.push(tasks.find(item => item.date[1] === arrayItem))
             ))
         }
         if(id === 2) {
+            newTask = []
+            var arraySec = tasks.map(item => item.date[1])
+            arraySec.sort(function(a, b){return a - b})
+            arraySec.forEach(arrayItem => (
+                newTask.push(tasks.find(item => item.date[1] === arrayItem))
+            ))
+        }
+        if(id === 3) {
+            newTask = [
+                ...tasks.filter(item => item.level === 'low'), 
+                ...tasks.filter(item => item.level === 'medium'),
+                ...tasks.filter(item => item.level === 'hight')
+            ]
+        }
+        if(id === 4) {
             newTask = [
                 ...tasks.filter(item => item.level === 'hight'), 
                 ...tasks.filter(item => item.level === 'medium'),
                 ...tasks.filter(item => item.level === 'low')
             ]
         }
-        setTask(newTask);
+        setTasks(newTask);
     }
     
     const toggle = () => {
@@ -238,8 +265,12 @@ function TodoList({ direction, ...args }) {
                         <Dropdown offset="true" isOpen={dropdownOpen} toggle={toggle} direction={direction}>
                             <DropdownToggle color='secondary' caret>Sort</DropdownToggle>
                             <DropdownMenu style={{ margin: 0 }}>
-                                <DropdownItem onClick={() => handleSort(1)}>Sort time</DropdownItem>
-                                <DropdownItem onClick={() => handleSort(2)}>Sort level</DropdownItem>
+                                <DropdownItem header disabled>Sort time</DropdownItem>
+                                <DropdownItem onClick={() => handleSort(1)}>Lastest</DropdownItem>
+                                <DropdownItem onClick={() => handleSort(2)}>Earliest</DropdownItem>
+                                <DropdownItem header disabled>Sort level</DropdownItem>
+                                <DropdownItem onClick={() => handleSort(3)}>Low-Hight</DropdownItem>
+                                <DropdownItem onClick={() => handleSort(4)}>Hight-Low</DropdownItem>
                             </DropdownMenu>
                         </Dropdown>
                     </div>
@@ -258,7 +289,7 @@ function TodoList({ direction, ...args }) {
                     tasks.length > 0 
                     ?
                     tasks.map((data, index) => (
-                        <TodoItem key={index} data={data} onComplete={handleComplete} onUpdate={handleUpdate} onDelete={handleDelete} />
+                        <TodoItem key={index} tasks={tasks} data={data} onComplete={handleComplete} onUpdate={handleUpdate} onDelete={handleDelete} />
                     )) 
                     : 
                     <h1 className={cx('result')}>Không có nội dung!</h1>

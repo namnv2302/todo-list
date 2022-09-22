@@ -1,10 +1,10 @@
-import { useEffect, useLayoutEffect, useState } from 'react';
+import { useState, memo } from 'react';
+import { doc, updateDoc } from "firebase/firestore";
+import EditFilledIcon from '@atlaskit/icon/glyph/edit-filled';
 import TrashIcon from '@atlaskit/icon/glyph/trash';
-import EditFilledIcon from '@atlaskit/icon/glyph/edit-filled'
-// import CheckIcon from '@atlaskit/icon/glyph/check'
 import classNames from 'classnames/bind';
+import { db } from '../storage/firebase.js'
 import styles from './TodoList.module.scss';
-
 
 const cx = classNames.bind(styles);
 const levels = ['hight', 'medium', 'low'];
@@ -18,11 +18,17 @@ function TodoItem({ data, onComplete, onUpdate, onDelete }) {
         [data.level]: data.level
     })
 
-    const handleEditLevel = (e) => {
+    const handleEditLevel = (e, id) => {
         data.level = e.target.value;
+
+        const updateItem = doc(db, "todo-items", `${id}`);
+        updateDoc(updateItem, {
+            level: data.level
+        });
+
         setEditLevel(!editLevel);
     }
-    
+
     return ( 
         <div className={cx('todo-item')}>
             <div className={cx('text')}>
@@ -32,15 +38,16 @@ function TodoItem({ data, onComplete, onUpdate, onDelete }) {
             <div className={cx('options')}>
                 {editLevel 
                     ?
-                    <select onChange={handleEditLevel} className={cx('select-level', {[data.level]: data.level})}>
+                    <select onChange={(e) => handleEditLevel(e, data.id)} className={cx('select-level', {[data.level]: data.level})}>
                         <option value={data.level}>{data.level}</option>
                         <option value={newLevels[0]}>{newLevels[0]}</option>
                         <option value={newLevels[1]}>{newLevels[1]}</option>
                     </select>
                     : 
-                    <span className={classes} onClick={() => setEditLevel(!editLevel)}>{data.level}</span>}
+                    <span className={classes} onClick={() => setEditLevel(!editLevel)}>{data.level}</span>
+                }
                 <span className={cx('icon-checkbox')}>
-                    <input checked={data.isComplete} onChange={() => onComplete(data.id)} type="checkbox"/>
+                    <input checked={data.isComplete} onChange={(e) => onComplete(data.id)} type="checkbox"/>
                 </span>
                 <span className={cx('icon-change')} onClick={() => onUpdate(data.id)}>
                     <EditFilledIcon primaryColor='#fec104' />
@@ -53,4 +60,4 @@ function TodoItem({ data, onComplete, onUpdate, onDelete }) {
      );
 }
 
-export default TodoItem;
+export default memo(TodoItem);
