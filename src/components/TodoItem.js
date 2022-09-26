@@ -1,4 +1,4 @@
-import { useState, memo } from 'react';
+import { useState } from 'react';
 import { doc, updateDoc } from "firebase/firestore";
 import EditFilledIcon from '@atlaskit/icon/glyph/edit-filled';
 import TrashIcon from '@atlaskit/icon/glyph/trash';
@@ -60,4 +60,4 @@ function TodoItem({ data, onComplete, onUpdate, onDelete }) {
      );
 }
 
-export default memo(TodoItem);
+export default TodoItem;

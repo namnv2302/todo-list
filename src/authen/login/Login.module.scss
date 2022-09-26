@@ -1,0 +1,95 @@
+.login {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: var(--primary);
+}
+
+.container {
+    width: 50%;
+    padding: 40px;
+    background-color: var(--white);
+    border-radius: 14px;
+
+    h3 {
+        color: var(--black);
+        font-weight: 600;
+        margin-bottom: 20px;
+    }
+
+    .input-item {
+        margin-bottom: 20px;
+        
+        label {
+            font-size: 1.6rem;
+            font-weight: 600;
+            color: var(--black);
+            margin-bottom: 10px;
+        }
+        input {
+            border: 1px solid #ccc;
+            outline: none;
+            width: 100%;
+            border-radius: 4px;
+            font-size: 1.6rem;
+            font-weight: 500;
+            padding: 6px 14px;
+        }
+    }
+
+    .button {
+        width: 100%;
+        height: 38px;
+        border: none;
+        outline: none;
+        margin-bottom: 10px;
+        border-radius: 4px;
+        color: var(--white);
+        background-color: var(--primary);
+    }
+
+    .wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        .left {
+            display: flex;
+            align-items: center;
+        }
+    }
+
+    .reset a {
+        color: var(--primary);
+        font-size: 1.5rem;
+        float: right;
+        text-decoration: underline;
+    }
+
+    .register {
+        font-size: 1.5rem;
+
+        a {
+            text-decoration: underline;
+            color: var(--primary);
+        }
+    }
+
+    .sign-up-with {
+        display: flex;
+        align-items: center;
+        margin-left: 10px;
+
+        .google, .facebook {
+            cursor: pointer;
+            
+            img {
+                height: 16px;
+                width: 16px;
+                object-fit: cover;
+                margin-right: 10px;
+            }
+        }
+    }
+}
