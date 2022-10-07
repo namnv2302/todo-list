@@ -1,28 +1,33 @@
-import { useState, useEffect, useRef } from 'react';
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc, query, where } from "firebase/firestore"; 
+import { useState, useEffect, useRef, useContext } from 'react';
+import { UserOutlined } from '@ant-design/icons';
+import { Avatar, Button, Tooltip } from 'antd';
+import { collection, getDocs, doc, updateDoc, deleteDoc, query, where, onSnapshot } from "firebase/firestore"; 
 import { useAuthState } from "react-firebase-hooks/auth";
 import BillingFilledIcon from '@atlaskit/icon/glyph/billing-filled';
 import { useNavigate } from 'react-router-dom';
-import SignOutIcon from '@atlaskit/icon/glyph/sign-out'
 import { v4 } from 'uuid';
 import {
     Dropdown,
     DropdownToggle,
     DropdownMenu,
     DropdownItem,
-  } from 'reactstrap';
+} from 'reactstrap';
 import { auth, db } from '../storage/firebase.js';
-import { logout } from '../authen/functions.js';
 import TodoItem from './TodoItem';
 import classNames from 'classnames/bind';
 import styles from './TodoList.module.scss';
+import Sidebar from './Sidebar/Sidebar.js';
+import addDocument from '../services/addDocument.js';
+import { GroupsContext } from '../services/GroupsProvider';
+import InviteMemberModal from '../services/InviteMember';
 
 const cx = classNames.bind(styles);
 
 function TodoList({ direction, ...args }) {
     const isComplete = false;
-    
-    const [updateItem, setUpdateItem] = useState(null);
+    const { members, setChooseGroup, chooseGroup, groupChoosed, inviteMember, setInviteMember } = useContext(GroupsContext);
+
+    const [updateItem, setUpdateItem] = useState();
     const [level, setLevel] = useState('hight');
     const [searchValue, setSearchValue] = useState('');
     const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -36,25 +41,8 @@ function TodoList({ direction, ...args }) {
     const searchRef = useRef();
 
     // Lấy thông tin user
-    const [user, loading] = useAuthState(auth)
+    const [user, loading] = useAuthState(auth);
     const navigate = useNavigate();
-
-    const fetchUserName = async () => {
-        try {
-          const q = query(collection(db, "users"), where("uid", "==", user?.uid));
-          const doc = await getDocs(q);
-
-        } catch (err) {
-          console.error(err);
-        }
-      };
-    
-      useEffect(() => {
-        if (loading) return;
-        if (!user) return navigate("/");
-        
-        // fetchUserName();
-      }, [user, loading])
 
     // Xử lý sửa các task
     useEffect(() => {
@@ -77,17 +65,35 @@ function TodoList({ direction, ...args }) {
                 tasks.push(doc.data())
             });
             setTasks(tasks)
+            
         } catch (error) {
             console.log(error)
         }
     }
+    
+    useEffect(() => {
+        const q = query(collection(db, 'todo-items-group'), where('idGroup', '==', `${groupChoosed.id}`))
+        const unsub = onSnapshot(q, (snapshot) => {
+            setTasks(snapshot.docs.map(doc => doc.data()))
+        })
+        return unsub
+    }, [groupChoosed.id])
 
     useEffect(() => {
         if(loading) return;
-        if(!user) return navigate('/')
+        if(!user) return navigate('/login')
 
-        fetchData()
-    }, [loading])
+        if(chooseGroup === '') {
+            fetchData()
+        } else {
+            const q = query(collection(db, 'todo-items-group'), where('idGroup', '==', `${groupChoosed.id}`))
+            const unsub = onSnapshot(q, (snapshot) => {
+                setTasks(snapshot.docs.map(doc => doc.data()))
+            })
+            return unsub
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, loading, groupChoosed.id])
 
     const AddZero = (num) => {
         return (num >= 0 && num < 10) ? "0" + num : num + "";
@@ -108,6 +114,7 @@ function TodoList({ direction, ...args }) {
         return [strDateTime, sec];
     }
 
+
     // Xử lý khi click nút tạo task 
     const handleSubmit = () => {
         if(!updateItem) {
@@ -121,9 +128,13 @@ function TodoList({ direction, ...args }) {
                     level: level,
                 }
                 
-                setTasks(prev => [...prev, item])
-
-                setDoc(doc(db, "todo-items", `${item.id}`), item);
+                if(chooseGroup) {
+                    setTasks(prev => [...prev, {...item, idGroup: groupChoosed.id}])
+                    addDocument(`todo-items-group`, {...item, idGroup: groupChoosed.id});
+                } else {
+                    setTasks(prev => [...prev, item])
+                    addDocument('todo-items', item);
+                }
             }
             setInputValue('');
             inputRef.current.focus();
@@ -133,7 +144,7 @@ function TodoList({ direction, ...args }) {
                     updateItem.isComplete = false
                 }
 
-                const item = doc(db, "todo-items", `${updateItem.id}`);
+                const item = chooseGroup ? doc(db, "todo-items-group", `${updateItem.id}`) : doc(db, "todo-items", `${updateItem.id}`);
                 updateDoc(item, {
                     id: updateItem.id, 
                     title: inputValue, 
@@ -162,8 +173,12 @@ function TodoList({ direction, ...args }) {
     }
 
     // Xử lý khi xóa task 
-    const handleDelete = (id) => {
-        deleteDoc(doc(db, "todo-items", `${id}`));
+    const handleDelete = async (id) => {
+        if(chooseGroup === '') {
+            await deleteDoc(doc(db, "todo-items", `${id}`));
+        } else {
+            await deleteDoc(doc(db, "todo-items-group", `${id}`));
+        }
         setTasks(prev => {
             const newTask = prev.filter((item) => item.id !== id);
 
@@ -183,7 +198,7 @@ function TodoList({ direction, ...args }) {
             const newTask = prev.map(item => item.id === id ? {...item, isComplete: !item.isComplete} : item);
             const itemFind = prev.find(item => item.id === id);
 
-            const item = doc(db, "todo-items", `${id}`);
+            const item = chooseGroup ? doc(db, "todo-items-group", id) : doc(db, "todo-items", id);
             updateDoc(item, {
                 isComplete: !itemFind.isComplete
             });
@@ -202,11 +217,19 @@ function TodoList({ direction, ...args }) {
             if(searchTask.length > 0) {
                 setTasks(searchTask)
             } else {
-                fetchData();
+                if(chooseGroup === '') {
+                    fetchData()
+                } else {
+                    setChooseGroup(groupChoosed.id)
+                }
             }
             
         } else {
-            fetchData();
+            if(chooseGroup === '') {
+                fetchData()
+            } else {
+                setChooseGroup(groupChoosed.id)
+            }
         }
     }
 
@@ -257,7 +280,7 @@ function TodoList({ direction, ...args }) {
 
     const handleFilter = (id) => {
         let filterTasks = [];
-        const q = query(collection(db, "todo-items"), where("uid", "==", user.uid));
+        const q = chooseGroup ? query(collection(db, "todo-items-group"), where("uid", "==", user.uid)) : query(collection(db, "todo-items"), where("uid", "==", user.uid));
         getDocs(q)
             .then((querySnapshot) => {
                 const items = [];
@@ -288,95 +311,118 @@ function TodoList({ direction, ...args }) {
     const toggleFilter = () => {
         return setDropdownOpenFilter((prevState) => !prevState);
     }
+    
+    const handleDeleteMember = (uid) => {
+        if(uid !== user.uid && groupChoosed.isGroupBoss === user.uid) {
+            const item = doc(db, "groups", groupChoosed.id);
+            updateDoc(item, {
+                members: groupChoosed.members.filter(member => member !== uid)
+            });
+        }
+    };
 
-    return (   
-        <>
-            <div className={cx('logout')} onClick={logout}>
-                <span>Logout</span>
-                <SignOutIcon />
-            </div>
-            <h3 className={cx('heading')}>Todo List</h3>
-            <div className={cx('content')}>
-                <div className={cx('todo-list')}>
-                    <div className={cx('todo-list-form')}>
-                        <div className={cx('wrapper-input')}>
-                            <div className={cx('input')}>
-                                <div className={cx('icon')}>
-                                    <BillingFilledIcon size="large" primaryColor='#16a3b7' label=""  />
+    return (
+        <div className={cx('wrap')}>
+            <Sidebar />
+            
+            <div className={cx('body')}>
+                {chooseGroup && <>
+                    <div className={cx('name-group')}>{groupChoosed.title}</div>
+                    <Avatar.Group maxCount={2} maxStyle={{ color: '#f56a00', backgroundColor: '#fde3cf' }}>
+                        {members.map((member, index) => (
+                            <Tooltip key={index} onClick={() => handleDeleteMember(member.uid)} title={member.displayName || 'No name'} placement="top">
+                                <Avatar src={member.photoURL} style={{ backgroundColor: '#87d068' }} icon={<UserOutlined />} />
+                            </Tooltip>
+                        ))}
+                    </Avatar.Group>
+                    <Button onClick={() => setInviteMember(true)}>Add member</Button>
+                </>}
+
+                <h3 className={cx('heading')}>Todo List</h3>
+                <div className={cx('content')}>
+                    <div className={cx('todo-list')}>
+                        <div className={cx('todo-list-form')}>
+                            <div className={cx('wrapper-input')}>
+                                <div className={cx('input')}>
+                                    <div className={cx('icon')}>
+                                        <BillingFilledIcon size="large" primaryColor='#16a3b7' label=""  />
+                                    </div>
+                                    <input
+                                        ref={inputRef}
+                                        type="text" 
+                                        placeholder='New Todo...'
+                                        value={inputValue}
+                                        onChange={(e) => setInputValue(e.target.value)}
+                                    />
                                 </div>
-                                <input
-                                    ref={inputRef}
-                                    type="text" 
-                                    placeholder='New Todo...'
-                                    value={inputValue}
-                                    onChange={(e) => setInputValue(e.target.value)}
-                                />
+                                <select className={cx('level-option')} value={level} id="level" onChange={handleChooseLevel}>
+                                    <option value="hight">Hight</option>
+                                    <option value="medium">Medium</option>
+                                    <option value="low">Low</option>
+                                </select>
                             </div>
-                            <select className={cx('level-option')} value={level} id="level" onChange={handleChooseLevel}>
-                                <option value="hight">Hight</option>
-                                <option value="medium">Medium</option>
-                                <option value="low">Low</option>
-                            </select>
+                            <div         
+                                className={cx('button')}
+                                onClick={handleSubmit}
+                            >
+                                {updateItem ? 'Change' : 'Add new task'}
+                            </div>
                         </div>
-                        <div         
-                            className={cx('button')}
-                            onClick={handleSubmit}
-                        >
-                            {updateItem ? 'Change' : 'Add new task'}
+                        <div className={cx('wrapper')}>
+                            {tasks.length > 0 && <div className={cx('methods')}>
+                                <div className={cx('sort-filter')}>
+                                <div className={cx('sort')}>
+                                    <Dropdown offset="true" isOpen={dropdownOpen} toggle={toggle} direction={direction}>
+                                        <DropdownToggle color='secondary' caret>Sort</DropdownToggle>
+                                        <DropdownMenu style={{ margin: 0 }}>
+                                            <DropdownItem header disabled>Sort time</DropdownItem>
+                                            <DropdownItem onClick={() => handleSort(1)}>Lastest</DropdownItem>
+                                            <DropdownItem onClick={() => handleSort(2)}>Earliest</DropdownItem>
+                                            <DropdownItem header disabled>Sort level</DropdownItem>
+                                            <DropdownItem onClick={() => handleSort(3)}>Low-Hight</DropdownItem>
+                                            <DropdownItem onClick={() => handleSort(4)}>Hight-Low</DropdownItem>
+                                        </DropdownMenu>
+                                    </Dropdown>
+                                </div>
+                                <div className={cx('filter')}>
+                                    <Dropdown offset="true" isOpen={dropdownOpenFilter} toggle={toggleFilter} direction={direction}>
+                                        <DropdownToggle color='secondary' caret>Filter</DropdownToggle>
+                                        <DropdownMenu style={{ margin: 0 }}>
+                                            <DropdownItem onClick={() => handleFilter(1)}>Hight</DropdownItem>
+                                            <DropdownItem onClick={() => handleFilter(2)}>Medium</DropdownItem>
+                                            <DropdownItem onClick={() => handleFilter(3)}>Low</DropdownItem>
+                                            <DropdownItem active onClick={() => handleFilter(4)}>Clear</DropdownItem>
+                                        </DropdownMenu>
+                                    </Dropdown>
+                                </div>
+                                </div>
+                                <div className={cx('search-input')}>
+                                    <input 
+                                        ref={searchRef}
+                                        type='text'
+                                        placeholder='Search...' 
+                                        value={searchValue}
+                                        onChange={(e) => setSearchValue(e.target.value)}
+                                    />
+                                    <button className={cx('button-search')} onClick={handleSearch}>Search</button>
+                                </div>
+                            </div>}
+                            {
+                                tasks.length > 0 
+                                ?
+                                tasks.map((data, index) => (
+                                    <TodoItem key={index} tasks={tasks} data={data} onComplete={handleComplete} onUpdate={handleUpdate} onDelete={handleDelete} />
+                                )) 
+                                : 
+                                <h1 className={cx('result')}>Không có nội dung!</h1>
+                            }
                         </div>
-                    </div>
-                    <div className={cx('wrapper')}>
-                        {tasks.length > 0 && <div className={cx('methods')}>
-                            <div className={cx('sort-filter')}>
-                            <div className={cx('sort')}>
-                                <Dropdown offset="true" isOpen={dropdownOpen} toggle={toggle} direction={direction}>
-                                    <DropdownToggle color='secondary' caret>Sort</DropdownToggle>
-                                    <DropdownMenu style={{ margin: 0 }}>
-                                        <DropdownItem header disabled>Sort time</DropdownItem>
-                                        <DropdownItem onClick={() => handleSort(1)}>Lastest</DropdownItem>
-                                        <DropdownItem onClick={() => handleSort(2)}>Earliest</DropdownItem>
-                                        <DropdownItem header disabled>Sort level</DropdownItem>
-                                        <DropdownItem onClick={() => handleSort(3)}>Low-Hight</DropdownItem>
-                                        <DropdownItem onClick={() => handleSort(4)}>Hight-Low</DropdownItem>
-                                    </DropdownMenu>
-                                </Dropdown>
-                            </div>
-                            <div className={cx('filter')}>
-                                <Dropdown offset="true" isOpen={dropdownOpenFilter} toggle={toggleFilter} direction={direction}>
-                                    <DropdownToggle color='secondary' caret>Filter</DropdownToggle>
-                                    <DropdownMenu style={{ margin: 0 }}>
-                                        <DropdownItem onClick={() => handleFilter(1)}>Hight</DropdownItem>
-                                        <DropdownItem onClick={() => handleFilter(2)}>Medium</DropdownItem>
-                                        <DropdownItem onClick={() => handleFilter(3)}>Low</DropdownItem>
-                                        <DropdownItem active onClick={() => handleFilter(4)}>Clear</DropdownItem>
-                                    </DropdownMenu>
-                                </Dropdown>
-                            </div>
-                            </div>
-                            <div className={cx('search-input')}>
-                                <input 
-                                    ref={searchRef}
-                                    type='text'
-                                    placeholder='Search...' 
-                                    value={searchValue}
-                                    onChange={(e) => setSearchValue(e.target.value)}
-                                />
-                                <button className={cx('button-search')} onClick={handleSearch}>Search</button>
-                            </div>
-                        </div>}
-                        {
-                            tasks.length > 0 
-                            ?
-                            tasks.map((data, index) => (
-                                <TodoItem key={index} tasks={tasks} data={data} onComplete={handleComplete} onUpdate={handleUpdate} onDelete={handleDelete} />
-                            )) 
-                            : 
-                            <h1 className={cx('result')}>Không có nội dung!</h1>
-                        }
                     </div>
                 </div>
             </div>
-        </>
+
+            {inviteMember && <InviteMemberModal />}
+        </div>
     )
 }
 

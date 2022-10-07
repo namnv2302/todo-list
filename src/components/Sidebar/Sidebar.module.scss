@@ -1,0 +1,146 @@
+.sidebar {
+    min-width: 220px;
+    background-color: #FFFAFA;
+    height: 100vh;
+    padding: 0 16px;
+
+    .home, .group, .logout, .create-group {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--black);
+        padding: 4px;
+        min-height: 40px;
+        border-radius: 4px;
+        cursor: pointer;
+    
+        span:first-child {
+            margin-right: 10px;
+        }
+    }
+
+    .home:hover, .group:hover, .logout:hover {
+        background-color: var(--primary);
+        color: var(--white);
+    }
+
+    .create-group:hover {
+        background-color: #f2f2f2;
+        cursor: pointer;
+    }
+
+    .group-list {
+
+        .group-item {
+            height: 34px;
+            display: flex;
+            border-radius: 4px;
+            justify-content: center;
+            align-items: center;
+            color: var(--primary);
+
+            &:hover {
+                background-color: #f2f2f2;
+                cursor: pointer;
+            }
+
+            p {
+                margin-bottom: 0;
+            }
+        }
+
+    }
+}
+
+.sidebar {
+    .profile {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .image {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 90px;
+        height: 90px;
+        border-radius: 100%;
+        margin: 20px 0 20px;
+
+        img {
+            height: 100%;
+            width: 100%;
+            display: block;
+            border-radius: 100%;
+        }
+    }
+    .name {
+        text-align: center;
+        font-size: 1.8rem;
+        font-weight: 600;
+    }
+}
+
+.create-modal {
+    position: fixed;
+    z-index: 1;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.3);
+
+    .create-body {
+        min-width: 300px;
+        padding: 20px;
+        border-radius: 4px;
+        background-color: var(--white);
+
+        h3 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--black);
+            text-align: center;
+        }
+
+        .input {
+            margin-top: 16px;
+
+            input {
+                width: 100%;
+                height: 38px;
+                border: 1px solid #ccc;
+                padding: 0 4px;
+                outline: none;
+                border-radius: 4px;
+            }
+        }
+
+        .button {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 16px;
+
+            button {
+                height: 28px;
+                width: 90px;
+                border: none;
+                outline: none;
+                border-radius: 4px;
+                color: var(--white);
+                margin-left: 16px;
+
+                &:first-child {
+                    background-color: var(--primary);
+                }
+                &:last-child {
+                    background-color: rgb(234, 52, 52);
+                }
+            }
+        }
+    }
+}

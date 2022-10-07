@@ -1,16 +1,18 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { doc, updateDoc } from "firebase/firestore";
 import EditFilledIcon from '@atlaskit/icon/glyph/edit-filled';
 import TrashIcon from '@atlaskit/icon/glyph/trash';
 import classNames from 'classnames/bind';
 import { db } from '../storage/firebase.js'
 import styles from './TodoList.module.scss';
+import { GroupsContext } from '../services/GroupsProvider';
 
 const cx = classNames.bind(styles);
 const levels = ['hight', 'medium', 'low'];
 
 function TodoItem({ data, onComplete, onUpdate, onDelete }) {
     const [editLevel, setEditLevel] = useState(false)
+    const { chooseGroup } = useContext(GroupsContext)
 
     const newLevels = levels.filter(level => level !== data.level);
 
@@ -21,7 +23,7 @@ function TodoItem({ data, onComplete, onUpdate, onDelete }) {
     const handleEditLevel = (e, id) => {
         data.level = e.target.value;
 
-        const updateItem = doc(db, "todo-items", `${id}`);
+        const updateItem = chooseGroup ? doc(db, 'todo-items-group', `${id}`) : doc(db, "todo-items", `${id}`);
         updateDoc(updateItem, {
             level: data.level
         });

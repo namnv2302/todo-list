@@ -1,19 +1,24 @@
 import { useState, useEffect } from 'react';
 import classNames from 'classnames/bind';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuthState } from 'react-firebase-hooks/auth'
 import { sendPasswordReset } from '../functions.js';
 import styles from './Reset.module.scss';
+import { auth } from '../../storage/firebase.js'
 
 const cx = classNames.bind(styles);
 
 function Reset() {
     const [email, setEmail] = useState('');
+    const [user, loading] = useAuthState(auth);
+    const navigate = useNavigate();
 
-    // useEffect(() => {
-    //     if(loading) return;
-    //     if(user) return navigate('/todolist');
-
-    // }, [user, loading])
+    useEffect(() => {
+        if(loading) return;
+        if(user) return navigate('/');
+        
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, loading])
 
     const resetPassword = () => {
         if(email) {

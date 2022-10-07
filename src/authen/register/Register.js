@@ -9,7 +9,6 @@ import { registerWithEmailAndPassword, signInWithGoogle, signInWithFacebook } fr
 const cx = classNames.bind(styles);
 
 function Register() {
-    const [fullname, setFullname] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [user, loading] = useAuthState(auth);
@@ -17,24 +16,15 @@ function Register() {
 
     useEffect(() => {
         if(loading) return;
-        if(user) return navigate('/todolist');
+        if(user) return navigate('/');
         
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user, loading])
 
     return ( 
         <div className={cx('register')}>
             <div className={cx('container')}>
                 <h3>Register</h3>
-                <div className={cx('input-item')}>
-                    <label htmlFor='fullname'>Fullname</label>
-                    <input 
-                        id='fullname'
-                        type='text'
-                        placeholder='Enter fullname'
-                        value={fullname}
-                        onChange={e => setFullname(e.target.value)}
-                    />
-                </div>
                 <div className={cx('input-item')}>
                     <label htmlFor='email'>Email address</label>
                     <input 
@@ -59,7 +49,7 @@ function Register() {
                 <div>
                     <button className={cx('button')}
                         
-                        onClick={() => registerWithEmailAndPassword(fullname, email, password)}
+                        onClick={() => registerWithEmailAndPassword(email, password)}
                     >
                         Register
                     </button>
@@ -71,7 +61,7 @@ function Register() {
                         </div>
                         <div className={cx('sign-up-with')}>
                             <div className={cx('google')} onClick={signInWithGoogle}>
-                                <img src="https://freesvg.org/img/1534129544.png" alt="" />
+                                <img src="https://img-cache.coccoc.com/image2?i=2&l=19/237768940" alt="" />
                             </div>
                             <div className={cx('facebook')} onClick={signInWithFacebook}>
                                 <img src="https://img-cache.coccoc.com/image2?i=2&l=50/784792063" alt="" />
